@@ -1,0 +1,63 @@
+# render.yaml - Konfigurasi deploy ATMDS Bot ke Render.com
+# Deploy sebagai Background Worker (bukan Web Service) supaya gak sleep
+# Docs: https://render.com/docs/background-workers
+
+services:
+  - type: worker
+    name: dedek-tersayang-bot
+    env: python
+    region: frankfurt  # Germany - region terdekat dari Indonesia dengan latency rendah
+    plan: free  # 512MB RAM, auto-deploy from GitHub
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    healthCheckPath: null  # Background worker gak punya HTTP endpoint
+    autoDeploy: yes  # Auto deploy kalau ada push ke main branch
+    
+    # Environment variables (set di Render dashboard atau di sini)
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: DISCORD_TOKEN
+        sync: false  # Set manual di Render dashboard (SENSITIVE)
+      - key: DISCORD_USER_ID
+        sync: false
+      - key: CLOUDFLARE_API_KEY
+        sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_MODEL
+        value: "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: "qwen/qwen-2.5-72b-instruct"
+      - key: USER_NAME
+        value: "Sayang"
+      - key: ASSISTANT_NAME
+        value: "Dedek Tersayang"
+      - key: MEAL_TIMES
+        value: "12:00,18:00,21:00"
+      - key: REST_MODE_TIMEOUT
+        value: "30"
+      - key: USE_LLM_FOR_REMINDERS
+        value: "false"
+      - key: CAMPUS_CHECK_ENABLED
+        value: "false"
+      - key: CAMPUS_CHECK_TIME
+        value: "08:00"
+      - key: GOOGLE_KEEP_EMAIL
+        sync: false
+      - key: GOOGLE_KEEP_APP_PASSWORD
+        sync: false
+      - key: GOOGLE_KEEP_DEFAULT_TAG
+        value: "DedekTersayang"
+
+# Catatan:
+# - Render free tier: 750 jam/bulan, cukup buat 1 worker 24/7
+# - Render free gak punya persistent storage! SQLite akan reset tiap deploy
+#   - Untuk data persistent (tasks, memories, campus assignments), 
+#     pakai PostgreSQL eksternal seperti Neon.tech (free, 0.5GB)
+#   - Atau accept bahwa conversation history reset tiap restart
+# - Region Frankfurt (ger) paling recommended buat user Indonesia:
+#   - Latency ~250ms dari ID (vs US ~300ms)
+#   - Region EU = semua provider LLM accessible (no Cloudflare block)
