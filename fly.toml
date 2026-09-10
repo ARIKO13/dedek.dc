@@ -1,0 +1,48 @@
+# fly.toml - Konfigurasi deploy ATMDS Bot ke Fly.io
+# Docs: https://fly.io/docs/reference/configuration/
+
+app = "dedek-tersayang-bot"
+primary_region = "sin"  # Singapore - region terdekat dari Indonesia (latency ~20-50ms)
+kill_signal = "SIGINT"
+kill_timeout = 30  # 30s grace period for graceful shutdown
+
+# Build config: pakai Dockerfile yang udah ada
+[build]
+  dockerfile = "Dockerfile"
+
+# Deploy sebagai long-running process (bukan HTTP service)
+# Bot Discord gak butuh HTTP endpoint, jadi gak perlu [services.http]
+[deploy]
+  strategy = "rolling"  # Zero-downtime deploy (kalau ada versi baru)
+
+# Environment variables default (non-sensitive)
+[env]
+  PYTHONUNBUFFERED = "1"
+  PYTHONDONTWRITEBYTECODE = "1"
+  # Sensitive vars (DISCORD_TOKEN, CLOUDFLARE_API_KEY, dll) di-set via `flyctl secrets set`
+
+# Volume untuk persistent SQLite storage
+# Supaya data bot (memory, tasks, assignments) gak hilang saat redeploy
+[[mounts]]
+  source = "dedek_bot_data"
+  destination = "/app/data"
+  auto_extend_size_threshold = 80
+  auto_extend_size_increment = "1GB"
+  auto_extend_size_limit = "5GB"
+
+# VM config: shared-cpu-1x dengan 256MB RAM (free tier)
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256_mb"
+  cpus = 1
+
+# Auto-restart kalau bot crash (Fly.io otomatis restart)
+# Tidak perlu konfigurasi tambahan, default behavior Fly.io sudah begitu
+
+# Catatan:
+# - Fly.io free tier: 3 shared-cpu-1x VMs dengan 256MB RAM
+# - 1 VM cukup buat bot ini (idle ~150MB, peak ~200MB)
+# - Volume persistent 1GB free (sampai 3GB total)
+# - Region Singapore = IP SG = semua provider LLM accessible (no region block)
+# - Bot akan auto-restart kalau crash (default Fly.io behavior)
+# - Untuk update code: tinggal `git push` lalu `fly deploy` (atau auto-deploy via GitHub Actions)

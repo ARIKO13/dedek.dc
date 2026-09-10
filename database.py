@@ -5,11 +5,23 @@ ATMDS Bot Database (SQLite)
 - Conversation history (context LLM)
 - Long-term memories (fakta tentang user)
 """
+import os
 import sqlite3
 from datetime import datetime
 from config import USER_NAME, ASSISTANT_NAME
 
-DB_PATH = "/home/z/my-project/atmds_bot/atmds.db"
+# DB path configurable via env var (untuk Fly.io volume / Docker / VPS)
+# Default: atmds.db di directory yang sama dengan script (local dev)
+# Fly.io/Docker: set DB_PATH=/app/data/atmds.db biar persistent di volume
+DB_PATH = os.getenv("DB_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "atmds.db"))
+
+# Pastikan directory-nya ada (untuk fresh deploy di Fly.io/Docker)
+db_dir = os.path.dirname(DB_PATH)
+if db_dir and not os.path.exists(db_dir):
+    try:
+        os.makedirs(db_dir, exist_ok=True)
+    except Exception:
+        pass  # Gak critical, akan fail saat init_db kalau gak bisa create
 
 
 def get_conn():
